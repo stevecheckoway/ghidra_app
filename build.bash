@@ -33,7 +33,10 @@ create_cache() {
 # Download the JDK if we don't already have it.
 get_jdk() {
   if [[ ! -f "${cache}/${jdk_tar}" ]]; then
+    echo "Downloading the JDK to '${cache}/${jdk_tar}'"
     curl -L -o "${cache}/${jdk_tar}" "${jdk_url}"
+  else
+    echo "Using the cached JDK from '${cache}/${jdk_tar}'"
   fi
 
   # Verify the checksum.
@@ -43,7 +46,10 @@ get_jdk() {
 # Download Ghidra, if we don't already have it.
 get_ghidra() {
   if [[ ! -f "${cache}/${ghidra_zip}" ]]; then
+    echo "Downloading Ghidra to '${cache}/${ghidra_zip}'"
     curl -L -o "${cache}/${ghidra_zip}" "${ghidra_url}"
+  else
+    echo "Using cached Ghidra from '${cache}/${jdk_tar}'"
   fi
 
   # Verify the checksum.
@@ -53,6 +59,7 @@ get_ghidra() {
 build_wrapper() {
   local app=$1 ghidra_version ghidra_dir
 
+  echo "Building the Ghidra wrapper '${app}'"
   mkdir -p "${app}/Contents/MacOS" "${app}/Contents/Resources"
 
   # Figure out the version number.
@@ -98,12 +105,11 @@ GHIDRA_EOF
   tar Jxf "${cache}/${jdk_tar}" -C "${app}/Contents/Resources"
 
   # Unzip Ghidra
-  unzip "${cache}/${ghidra_zip}" -d "${app}/Contents/Resources"
+  unzip -qq "${cache}/${ghidra_zip}" -d "${app}/Contents/Resources"
 }
 
 main() {
-  local force
-  local app
+  local force app
 
   while getopts "fho:" arg; do
     case ${arg} in
