@@ -2,7 +2,8 @@
 
 set -e
 
-cache=${GHIDRA_APP_BUILD_CACHE:-$(dirname "$0")/cache}
+script_dir=$(dirname "$0")
+cache=${GHIDRA_APP_BUILD_CACHE:-"${script_dir}/cache"}
 
 jdk_url='https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.7%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.7_10.tar.gz'
 jdk_tar=$(basename "${jdk_url}")
@@ -50,19 +51,21 @@ get_ghidra() {
 }
 
 build_wrapper() {
-  local app=$1
+  local app=$1 ghidra_version ghidra_dir
 
   mkdir -p "${app}/Contents/MacOS" "${app}/Contents/Resources"
 
   # Figure out the version number.
-  [[ "${ghidra_zip}" =~ ^ghidra_([0-9.]+)_ ]]
-  local ghidra_version=${BASH_REMATCH[1]}
+  [[ "${ghidra_zip}" =~ ^ghidra_([0-9.]+)_([^_]+)_ ]] || exit 1
+  ghidra_version=${BASH_REMATCH[1]}
+  ghidra_dir="ghidra_${ghidra_version}_${BASH_REMATCH[2]}"
 
+  # Create the Info.plist.
   cat >"${app}/Contents/Info.plist" <<INFO_EOF
 {
   "CFBundleDisplayName": "Ghidra",
   "CFBundleDevelopmentRegion": "English",
-  "CFBundleExecutable": "ghidra_wrapper",
+  "CFBundleExecutable": "ghidra",
   "CFBundleIconFile": "ghidra",
   "CFBundleIdentifier": "net.checkoway.ghidra_app",
   "CFBundleInfoDictionaryVersion": "6.0",
@@ -73,7 +76,29 @@ build_wrapper() {
   "LSMinimumSystemVersion": "10.10",
 }
 INFO_EOF
+
+  # Convert the plist from JSON to the binary format.
   plutil -convert binary1 "${app}/Contents/Info.plist"
+
+  # Create the ghidra wrapper script.
+  cat >"${app}/Contents/MacOS/ghidra" <<GHIDRA_EOF
+#!/bin/bash
+app="\${0/MacOS\/ghidra}"
+export JAVA_HOME="\${app}/Resources/jdk-11.0.7+10/Contents/Home"
+export PATH="\${JAVA_HOME}/bin:\${PATH}"
+exec "\${app}/Resources/${ghidra_dir}/ghidraRun"
+GHIDRA_EOF
+
+  chmod +x "${app}/Contents/MacOS/ghidra"
+
+  # Copy the icon file.
+  cp "${script_dir}/ghidra.icns" "${app}/Contents/Resources"
+
+  # Untar the JDK into the Resources directory.
+  tar Jxf "${cache}/${jdk_tar}" -C "${app}/Contents/Resources"
+
+  # Unzip Ghidra
+  unzip "${cache}/${ghidra_zip}" -d "${app}/Contents/Resources"
 }
 
 main() {
