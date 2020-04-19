@@ -1,4 +1,5 @@
 # ghidra_app
+[![Build Status](https://travis-ci.com/stevecheckoway/ghidra_app.svg?branch=master)](https://travis-ci.com/stevecheckoway/ghidra_app)
 
 Build a working Ghidra application for macOS with a bundled Java JDK.
 
