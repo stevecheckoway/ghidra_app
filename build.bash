@@ -40,7 +40,7 @@ get_jdk() {
   fi
 
   # Verify the checksum.
-  echo "${jdk_checksum}  ${cache}/${jdk_tar}" | shasum --algorithm 256 --check --quiet
+  echo "${jdk_checksum}  ${cache}/${jdk_tar}" | shasum --algorithm 256 --check --status
 }
 
 # Download Ghidra, if we don't already have it.
@@ -53,7 +53,7 @@ get_ghidra() {
   fi
 
   # Verify the checksum.
-  echo "${ghidra_checksum}  ${cache}/${ghidra_zip}" | shasum --algorithm 256 --check --quiet
+  echo "${ghidra_checksum}  ${cache}/${ghidra_zip}" | shasum --algorithm 256 --check --status
 }
 
 build_wrapper() {
