@@ -5,6 +5,7 @@ set -e
 script_dir=$(dirname "$0")
 cache=${GHIDRA_APP_BUILD_CACHE:-"${script_dir}/cache"}
 
+jdk_version='jdk-11.0.10+9'
 jdk_url='https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.10%2B9/OpenJDK11U-jdk_x64_mac_hotspot_11.0.10_9.tar.gz'
 jdk_tar=$(basename "${jdk_url}")
 jdk_checksum='ee7c98c9d79689aca6e717965747b8bf4eec5413e89d5444cc2bd6dbd59e3811'
@@ -91,7 +92,7 @@ INFO_EOF
   cat >"${app}/Contents/MacOS/ghidra" <<GHIDRA_EOF
 #!/bin/bash
 app="\${0/MacOS\/ghidra}"
-export JAVA_HOME="\${app}/Resources/jdk-11.0.7+10/Contents/Home"
+export JAVA_HOME="\${app}/Resources/${jdk_version}/Contents/Home"
 export PATH="\${JAVA_HOME}/bin:\${PATH}"
 exec "\${app}/Resources/${ghidra_dir}/ghidraRun"
 GHIDRA_EOF
