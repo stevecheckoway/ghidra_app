@@ -5,13 +5,13 @@ set -e
 script_dir=$(dirname "$0")
 cache=${GHIDRA_APP_BUILD_CACHE:-"${script_dir}/cache"}
 
-jdk_url='https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.7%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.7_10.tar.gz'
+jdk_url='https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.10%2B9/OpenJDK11U-jdk_x64_mac_hotspot_11.0.10_9.tar.gz'
 jdk_tar=$(basename "${jdk_url}")
-jdk_checksum='0ab1e15e8bd1916423960e91b932d2b17f4c15b02dbdf9fa30e9423280d9e5cc'
+jdk_checksum='ee7c98c9d79689aca6e717965747b8bf4eec5413e89d5444cc2bd6dbd59e3811'
 
-ghidra_url='https://ghidra-sre.org/ghidra_9.1.2_PUBLIC_20200212.zip'
+ghidra_url='https://ghidra-sre.org/ghidra_9.2.2_PUBLIC_20201229.zip'
 ghidra_zip=$(basename "${ghidra_url}")
-ghidra_checksum='ebe3fa4e1afd7d97650990b27777bb78bd0427e8e70c1d0ee042aeb52decac61'
+ghidra_checksum='8cf8806dd5b8b7c7826f04fad8b86fc7e07ea380eae497f3035f8c974de72cf8'
 
 # Print the usage.
 usage() {
@@ -49,7 +49,7 @@ get_ghidra() {
     echo "Downloading Ghidra to '${cache}/${ghidra_zip}'"
     curl -L -o "${cache}/${ghidra_zip}" "${ghidra_url}"
   else
-    echo "Using cached Ghidra from '${cache}/${jdk_tar}'"
+    echo "Using cached Ghidra from '${cache}/${ghidra_zip}'"
   fi
 
   # Verify the checksum.
