@@ -103,7 +103,7 @@ GHIDRA_EOF
   cp "${script_dir}/ghidra.icns" "${app}/Contents/Resources"
 
   # Untar the JDK into the Resources directory.
-  tar Jxf "${cache}/${jdk_tar}" -C "${app}/Contents/Resources"
+  tar zxf "${cache}/${jdk_tar}" -C "${app}/Contents/Resources"
 
   # Unzip Ghidra
   unzip -qq "${cache}/${ghidra_zip}" -d "${app}/Contents/Resources"
