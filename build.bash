@@ -76,9 +76,9 @@ decompress() {
 }
 
 build_wrapper() {
-  local app=$1 ghidra_version ghidra_dir
+  local app=$1 arch=$2 ghidra_version ghidra_dir
 
-  echo "Building the Ghidra wrapper '${app}'"
+  echo "Building the Ghidra wrapper '${app}' for ${arch}"
   mkdir -p "${app}/Contents/MacOS" "${app}/Contents/Resources"
 
   # Figure out the version number.
@@ -179,7 +179,7 @@ main() {
   create_cache
   get_jdk
   get_ghidra
-  build_wrapper "${app}"
+  build_wrapper "${app}" "${arch}"
 }
 
 main "$@"
