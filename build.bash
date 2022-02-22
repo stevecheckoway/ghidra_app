@@ -22,7 +22,7 @@ usage() {
 Usage: $0 [OPTION...]
 
 Options:
-  -a arch Include the JDK for x86-64 or arm64 [default: detect]
+  -a arch include the JDK for x86-64 or arm64 [default: detect]
   -f      force building Ghidra.app even if it already exists
   -h      show this help
   -o app  use 'app' as the output name
