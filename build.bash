@@ -5,14 +5,16 @@ set -e
 script_dir=$(dirname "$0")
 cache=${GHIDRA_APP_BUILD_CACHE:-"${script_dir}/cache"}
 
-jdk_version='jdk-11.0.10+9'
-jdk_url='https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.10%2B9/OpenJDK11U-jdk_x64_mac_hotspot_11.0.10_9.tar.gz'
-jdk_tar=$(basename "${jdk_url}")
-jdk_checksum='ee7c98c9d79689aca6e717965747b8bf4eec5413e89d5444cc2bd6dbd59e3811'
+jdk_x64_url='https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.14.1%2B1/OpenJDK11U-jdk_x64_mac_hotspot_11.0.14.1_1.tar.gz'
+jdk_x64_checksum='8c69808f5d9d209b195575e979de0e43cdf5d0f1acec1853a569601fe2c1f743'
+jdk_x64_home='jdk-11.0.14.1+1/Contents/Home'
+jdk_arm_url='https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-macos-aarch64.zip'
+jdk_arm_checksum='c0271a4702b546f757861708f41950ab4d46edfee656af6262825d2a971b2368'
+jdk_arm_home='jdk-11.0.14.1.jdk'
 
-ghidra_url='https://ghidra-sre.org/ghidra_9.2.2_PUBLIC_20201229.zip'
-ghidra_zip=$(basename "${ghidra_url}")
-ghidra_checksum='8cf8806dd5b8b7c7826f04fad8b86fc7e07ea380eae497f3035f8c974de72cf8'
+ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.1.2_build/ghidra_10.1.2_PUBLIC_20220125.zip'
+ghidra_dist=${ghidra_url##*/}
+ghidra_checksum='ac96fbdde7f754e0eb9ed51db020e77208cdb12cf58c08657a2ab87cb2694940'
 
 # Print the usage.
 usage() {
@@ -20,6 +22,7 @@ usage() {
 Usage: $0 [OPTION...]
 
 Options:
+  -a arch Include the JDK for x86-64 or arm64 [default: detect]
   -f      force building Ghidra.app even if it already exists
   -h      show this help
   -o app  use 'app' as the output name
@@ -33,28 +36,43 @@ create_cache() {
 
 # Download the JDK if we don't already have it.
 get_jdk() {
-  if [[ ! -f "${cache}/${jdk_tar}" ]]; then
-    echo "Downloading the JDK to '${cache}/${jdk_tar}'"
-    curl -L -o "${cache}/${jdk_tar}" "${jdk_url}"
+  if [[ ! -f "${cache}/${jdk_dist}" ]]; then
+    echo "Downloading the JDK to '${cache}/${jdk_dist}'"
+    curl -L -o "${cache}/${jdk_dist}" "${jdk_url}"
   else
-    echo "Using the cached JDK from '${cache}/${jdk_tar}'"
+    echo "Using the cached JDK from '${cache}/${jdk_dist}'"
   fi
 
   # Verify the checksum.
-  echo "${jdk_checksum}  ${cache}/${jdk_tar}" | shasum --algorithm 256 --check --status
+  echo "${jdk_checksum}  ${cache}/${jdk_dist}" | shasum --algorithm 256 --check --status
 }
 
 # Download Ghidra, if we don't already have it.
 get_ghidra() {
-  if [[ ! -f "${cache}/${ghidra_zip}" ]]; then
-    echo "Downloading Ghidra to '${cache}/${ghidra_zip}'"
-    curl -L -o "${cache}/${ghidra_zip}" "${ghidra_url}"
+  if [[ ! -f "${cache}/${ghidra_dist}" ]]; then
+    echo "Downloading Ghidra to '${cache}/${ghidra_dist}'"
+    curl -L -o "${cache}/${ghidra_dist}" "${ghidra_url}"
   else
-    echo "Using cached Ghidra from '${cache}/${ghidra_zip}'"
+    echo "Using cached Ghidra from '${cache}/${ghidra_dist}'"
   fi
 
   # Verify the checksum.
-  echo "${ghidra_checksum}  ${cache}/${ghidra_zip}" | shasum --algorithm 256 --check --status
+  echo "${ghidra_checksum}  ${cache}/${ghidra_dist}" | shasum --algorithm 256 --check --status
+}
+
+# Decompress the archive in $1 to ${app}/Contents/Resources.
+decompress() {
+  case $1 in
+    *.tar.gz)
+      tar zxf "$1" -C "${app}/Contents/Resources"
+      ;;
+    *.zip)
+      unzip -qq "$1" -d "${app}/Contents/Resources"
+      ;;
+    *)
+      echo "Unsupported file '$1'" >&2
+      exit 1
+  esac
 }
 
 build_wrapper() {
@@ -64,7 +82,7 @@ build_wrapper() {
   mkdir -p "${app}/Contents/MacOS" "${app}/Contents/Resources"
 
   # Figure out the version number.
-  [[ "${ghidra_zip}" =~ ^ghidra_([0-9.]+)_([^_]+)_ ]] || exit 1
+  [[ "${ghidra_dist}" =~ ^ghidra_([0-9.]+)_([^_]+)_ ]] || exit 1
   ghidra_version=${BASH_REMATCH[1]}
   ghidra_dir="ghidra_${ghidra_version}_${BASH_REMATCH[2]}"
 
@@ -92,7 +110,7 @@ INFO_EOF
   cat >"${app}/Contents/MacOS/ghidra" <<GHIDRA_EOF
 #!/bin/bash
 app="\${0/MacOS\/ghidra}"
-export JAVA_HOME="\${app}/Resources/${jdk_version}/Contents/Home"
+export JAVA_HOME="\${app}/Resources/${jdk_home}"
 export PATH="\${JAVA_HOME}/bin:\${PATH}"
 exec "\${app}/Resources/${ghidra_dir}/ghidraRun"
 GHIDRA_EOF
@@ -102,18 +120,19 @@ GHIDRA_EOF
   # Copy the icon file.
   cp "${script_dir}/ghidra.icns" "${app}/Contents/Resources"
 
-  # Untar the JDK into the Resources directory.
-  tar zxf "${cache}/${jdk_tar}" -C "${app}/Contents/Resources"
-
-  # Unzip Ghidra
-  unzip -qq "${cache}/${ghidra_zip}" -d "${app}/Contents/Resources"
+  # Unzip the JDK and Ghidra into the Resources directory.
+  decompress "${cache}/${jdk_dist}"
+  decompress "${cache}/${ghidra_dist}"
 }
 
 main() {
-  local force app
-
-  while getopts "fho:" arg; do
+  local force app arch
+  arch=$(uname -m)
+  while getopts "a:fho:" arg; do
     case ${arg} in
+      a)
+        arch=${OPTARG}
+        ;;
       f)
         force=yes
         ;;
@@ -129,6 +148,22 @@ main() {
         exit 1
     esac
   done
+  case ${arch} in
+    x86_64|x86-64)
+      jdk_url=${jdk_x64_url}
+      jdk_checksum=${jdk_x64_checksum}
+      jdk_home=${jdk_x64_home}
+      ;;
+    arm64|aarch64)
+      jdk_url=${jdk_arm_url}
+      jdk_checksum=${jdk_arm_checksum}
+      jdk_home=${jdk_arm_home}
+      ;;
+    *)
+      echo "$0: Unsupported architecture '${arch}'" >&2
+      exit 1
+  esac
+  jdk_dist=${jdk_url##*/}
 
   app=${app:-Ghidra.app}
 
