@@ -25,7 +25,7 @@ At this point, you should have `Ghidra.app` in the `ghidra_app` directory.
 
 The script will download Ghidra (currently version 10.1.2 which is the most
 recent at time of writing, 2022-02-22) and OpenJDK 11. Together, these take
-more than 450~MB.
+more than 450 MB.
 
 The downloads will be cached for future use in the `cache` directory. You may
 delete this directory after building if you wish.
