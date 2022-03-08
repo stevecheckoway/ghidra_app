@@ -89,7 +89,7 @@ build_wrapper() {
   # Create the Info.plist.
   cat >"${app}/Contents/Info.plist" <<INFO_EOF
 {
-  "CFBundleDisplayName": "Ghidra",
+  "CFBundleDisplayName": "$(basename "${app}" .app)",
   "CFBundleDevelopmentRegion": "English",
   "CFBundleExecutable": "ghidra",
   "CFBundleIconFile": "ghidra",
