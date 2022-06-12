@@ -12,9 +12,9 @@ jdk_arm_url='https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1
 jdk_arm_checksum='c0271a4702b546f757861708f41950ab4d46edfee656af6262825d2a971b2368'
 jdk_arm_home='jdk-11.0.14.1.jdk'
 
-ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.1.2_build/ghidra_10.1.2_PUBLIC_20220125.zip'
+ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.1.4_build/ghidra_10.1.4_PUBLIC_20220519.zip'
 ghidra_dist=${ghidra_url##*/}
-ghidra_checksum='ac96fbdde7f754e0eb9ed51db020e77208cdb12cf58c08657a2ab87cb2694940'
+ghidra_checksum='91556c77c7b00f376ca101a6026c0d079efbf24a35b09daaf80bda897318c1f1'
 
 # Print the usage.
 usage() {
