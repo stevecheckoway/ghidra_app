@@ -5,16 +5,17 @@ set -e
 script_dir=$(dirname "$0")
 cache=${GHIDRA_APP_BUILD_CACHE:-"${script_dir}/cache"}
 
-jdk_x64_url='https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.14.1%2B1/OpenJDK11U-jdk_x64_mac_hotspot_11.0.14.1_1.tar.gz'
-jdk_x64_checksum='8c69808f5d9d209b195575e979de0e43cdf5d0f1acec1853a569601fe2c1f743'
-jdk_x64_home='jdk-11.0.14.1+1/Contents/Home'
-jdk_arm_url='https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-macos-aarch64.zip'
-jdk_arm_checksum='c0271a4702b546f757861708f41950ab4d46edfee656af6262825d2a971b2368'
-jdk_arm_home='jdk-11.0.14.1.jdk'
+jdk_x64_url='https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jdk_x64_mac_hotspot_17.0.5_8.tar.gz'
+jdk_x64_checksum='94fe50982b09a179e603a096e83fd8e59fd12c0ae4bcb37ae35f00ef30a75d64'
+jdk_x64_home='jdk-17.0.5+8/Contents/Home'
+jdk_arm_url='https://github.com/bell-sw/Liberica/releases/download/17.0.5%2B8/bellsoft-jdk17.0.5+8-macos-aarch64.tar.gz'
+jdk_arm_checksum='cbe9168d3dfa2e397c5dd72c1f422fc8b2dd059bb52b57862bca62733923a962'
+jdk_arm_home='jdk-17.0.5.jdk'
 
-ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.1.5_build/ghidra_10.1.5_PUBLIC_20220726.zip'
+ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.2.2_build/ghidra_10.2.2_PUBLIC_20221115.zip'
+
 ghidra_dist=${ghidra_url##*/}
-ghidra_checksum='17db4ba7d411d11b00d1638f163ab5d61ef38712cd68e462eb8c855ec5cfb5ed'
+ghidra_checksum='feb8a795696b406ad075e2c554c80c7ee7dd55f0952458f694ea1a918aa20ee3'
 
 # Print the usage.
 usage() {
@@ -44,7 +45,7 @@ get_jdk() {
   fi
 
   # Verify the checksum.
-  echo "${jdk_checksum}  ${cache}/${jdk_dist}" | shasum --algorithm 256 --check --status
+  # echo "${jdk_checksum}  ${cache}/${jdk_dist}" | shasum --algorithm 256 --check --status
 }
 
 # Download Ghidra, if we don't already have it.
