@@ -45,7 +45,7 @@ get_jdk() {
   fi
 
   # Verify the checksum.
-  # echo "${jdk_checksum}  ${cache}/${jdk_dist}" | shasum --algorithm 256 --check --status
+  echo "${jdk_checksum}  ${cache}/${jdk_dist}" | shasum --algorithm 256 --check --status
 }
 
 # Download Ghidra, if we don't already have it.
