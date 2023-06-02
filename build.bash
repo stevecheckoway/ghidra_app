@@ -5,16 +5,22 @@ set -e
 script_dir=$(dirname "$0")
 cache=${GHIDRA_APP_BUILD_CACHE:-"${script_dir}/cache"}
 
-jdk_x64_url='https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.14.1%2B1/OpenJDK11U-jdk_x64_mac_hotspot_11.0.14.1_1.tar.gz'
-jdk_x64_checksum='8c69808f5d9d209b195575e979de0e43cdf5d0f1acec1853a569601fe2c1f743'
-jdk_x64_home='jdk-11.0.14.1+1/Contents/Home'
-jdk_arm_url='https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-macos-aarch64.zip'
-jdk_arm_checksum='c0271a4702b546f757861708f41950ab4d46edfee656af6262825d2a971b2368'
-jdk_arm_home='jdk-11.0.14.1.jdk'
+jdk_x64_url='https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jdk_x64_mac_hotspot_17.0.7_7.tar.gz'
+jdk_x64_checksum='50d0e9840113c93916418068ba6c845f1a72ed0dab80a8a1f7977b0e658b65fb'
+jdk_x64_home='jdk-17.0.7+7/Contents/Home'
 
-ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.1.5_build/ghidra_10.1.5_PUBLIC_20220726.zip'
+jdk_arm_url='https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jdk_aarch64_mac_hotspot_17.0.7_7.tar.gz'
+jdk_arm_checksum='1d6aeb55b47341e8ec33cc1644d58b88dfdcce17aa003a858baa7460550e6ff9'
+jdk_arm_home='jdk-17.0.7+7/Contents/Home'
+
+ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.3_build/ghidra_10.3_PUBLIC_20230510.zip'
 ghidra_dist=${ghidra_url##*/}
-ghidra_checksum='17db4ba7d411d11b00d1638f163ab5d61ef38712cd68e462eb8c855ec5cfb5ed'
+ghidra_checksum='4e990af9b22be562769bb6ce5d4d609fbb45455a7a2f756167b8cdcdb75887fc'
+
+gradle_url='https://services.gradle.org/distributions/gradle-8.1.1-bin.zip'
+gradle_dist=${gradle_url##*/}
+gradle_dir="${cache}/${gradle_dist//-bin.zip}"
+gradle_checksum='e111cb9948407e26351227dabce49822fb88c37ee72f1d1582a69c68af2e702f'
 
 # Print the usage.
 usage() {
@@ -58,6 +64,25 @@ get_ghidra() {
 
   # Verify the checksum.
   echo "${ghidra_checksum}  ${cache}/${ghidra_dist}" | shasum --algorithm 256 --check --status
+}
+
+get_gradle() {
+  # if gradle-8.1.1 (or whatever version) doesn't exist, download it (if
+  # necessary) and unzip it.
+  if [[ ! -d "${gradle_dir}" ]]; then
+    if [[ ! -f "${cache}/${gradle_dist}" ]]; then
+      echo "Downloading Gradle to '${cache}/${gradle_dist}'"
+      curl -L -o "${cache}/${gradle_dist}" "${gradle_url}"
+    else
+      echo "Using cached Gradle from '${cache}/${gradle_dist}'"
+    fi
+
+    # Verify the checksum.
+    echo "${gradle_checksum}  ${cache}/${gradle_dist}" | shasum --algorithm 256 --check --status
+
+    echo "Installing Gradle in '${gradle_dir}'"
+    unzip -qq -d "${cache}" "${cache}/${gradle_dist}"
+  fi
 }
 
 # Decompress the archive in $1 to ${app}/Contents/Resources.
@@ -125,13 +150,52 @@ GHIDRA_EOF
   decompress "${cache}/${ghidra_dist}"
 }
 
+# https://stackoverflow.com/a/3572105
+abspath() {
+  if [[ $1 = /* ]]; then
+    echo "$1"
+  else
+    echo "${PWD}/$1"
+  fi
+}
+
+build_natives() {
+  local app=$1 ghidra_version ghidra_dir gradle_bin
+
+  # XXX: Don't duplicate this logic.
+  # Figure out the version number.
+  [[ "${ghidra_dist}" =~ ^ghidra_([0-9.]+)_([^_]+)_ ]] || exit 1
+  ghidra_version=${BASH_REMATCH[1]}
+  ghidra_dir="ghidra_${ghidra_version}_${BASH_REMATCH[2]}"
+
+  java_home=$(abspath "${app}/Contents/Resources/${jdk_home}")
+  gradle_bin=$(abspath "${gradle_dir}/bin")
+  JAVA_HOME="${java_home}" PATH="${gradle_bin}:${java_home}/bin:${PATH}" "${app}/Contents/Resources/${ghidra_dir}/support/buildNatives"
+}
+
+normalize_arch() {
+  case $1 in
+    x86_64|x86-64)
+      echo "x86-64"
+      ;;
+    arm64|aarch64)
+      echo "arm64"
+      ;;
+    *)
+      echo "$0: Unsupported architecture '${arch}'" >&2
+      exit 1
+  esac
+}
+
+
 main() {
-  local force app arch
-  arch=$(uname -m)
+  local force app native_arch arch
+  native_arch=$(normalize_arch "$(uname -m)")
+  arch=${native_arch}
   while getopts "a:fho:" arg; do
     case ${arg} in
       a)
-        arch=${OPTARG}
+        arch=$(normalize_arch "${OPTARG}")
         ;;
       f)
         force=yes
@@ -149,12 +213,12 @@ main() {
     esac
   done
   case ${arch} in
-    x86_64|x86-64)
+    x86-64)
       jdk_url=${jdk_x64_url}
       jdk_checksum=${jdk_x64_checksum}
       jdk_home=${jdk_x64_home}
       ;;
-    arm64|aarch64)
+    arm64)
       jdk_url=${jdk_arm_url}
       jdk_checksum=${jdk_arm_checksum}
       jdk_home=${jdk_arm_home}
@@ -180,6 +244,17 @@ main() {
   get_jdk
   get_ghidra
   build_wrapper "${app}" "${arch}"
+  if [[ $arch = "$native_arch" ]]; then
+    echo "Building ${arch} native binaries"
+    get_gradle
+    build_natives "${app}"
+  elif [[ $arch = x86-64 ]]; then
+    echo "Using prebuilt native ${arch} binaries; "
+  else
+    echo "WARNING: native ${arch} binaries have not been built"
+    echo "         x86-64 binaries will be used via emulation"
+    echo "         This is slower."
+  fi
 }
 
 main "$@"
