@@ -81,7 +81,7 @@ get_gradle() {
     echo "${gradle_checksum}  ${cache}/${gradle_dist}" | shasum --algorithm 256 --check --status
 
     echo "Installing Gradle in '${gradle_dir}'"
-    unzip -d "${cache}" "${cache}/${gradle_dist}"
+    unzip -qq -d "${cache}" "${cache}/${gradle_dist}"
   fi
 }
 
