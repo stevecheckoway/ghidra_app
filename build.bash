@@ -21,6 +21,11 @@ gradle_url='https://services.gradle.org/distributions/gradle-8.1.1-bin.zip'
 gradle_dist=${gradle_url##*/}
 gradle_checksum='e111cb9948407e26351227dabce49822fb88c37ee72f1d1582a69c68af2e702f'
 
+# Figure out Ghidra's version number.
+[[ "${ghidra_dist}" =~ ^ghidra_([0-9.]+)_([^_]+)_ ]] || exit 1
+ghidra_version=${BASH_REMATCH[1]}
+ghidra_dir="ghidra_${ghidra_version}_${BASH_REMATCH[2]}"
+
 # Print the usage.
 usage() {
   cat <<USAGE_EOF
@@ -72,15 +77,10 @@ decompress() {
 }
 
 build_wrapper() {
-  local app=$1 arch=$2 ghidra_version ghidra_dir
+  local app=$1 arch=$2
 
   echo "Building the Ghidra wrapper '${app}' for ${arch}"
   mkdir -p "${app}/Contents/MacOS" "${app}/Contents/Resources"
-
-  # Figure out the version number.
-  [[ "${ghidra_dist}" =~ ^ghidra_([0-9.]+)_([^_]+)_ ]] || exit 1
-  ghidra_version=${BASH_REMATCH[1]}
-  ghidra_dir="ghidra_${ghidra_version}_${BASH_REMATCH[2]}"
 
   # Create the Info.plist.
   cat >"${app}/Contents/Info.plist" <<INFO_EOF
@@ -131,15 +131,32 @@ abspath() {
 }
 
 build_natives() {
-  local app=$1 arch=$2 ghidra_version ghidra_dir gradle_dir
+  # On arm64, we can use the JDK we just installed in ${app} to run Gradle
+  # regardless of whether ${app} is being built for x86-64 or arm64 due to
+  # Rosetta.
+  #
+  # On x86-64, we need an x86-64 version of the JDK to run Gradle. If we're
+  # building an arm64 version of ${app}, then we cannot use the JDK we just
+  # installed in ${app}. Instead, we'll need to download the x86-64 JDK.
+  local app=$1 arch=$2 gradle_dir target
 
-  # XXX: Don't duplicate this logic.
-  # Figure out the version number.
-  [[ "${ghidra_dist}" =~ ^ghidra_([0-9.]+)_([^_]+)_ ]] || exit 1
-  ghidra_version=${BASH_REMATCH[1]}
-  ghidra_dir="${app}/Contents/Resources/ghidra_${ghidra_version}_${BASH_REMATCH[2]}"
-  java_home=$(abspath "${app}/Contents/Resources/${jdk_home}")
+  echo "Building ${arch} native executables"
+
+  if [[ ${arch} = arm64 && $(uname -m) = x86_64 ]]; then
+    java_home="${cache}/${jdk_x64_home}"
+    if [[ ! -d "${java_home}" ]]; then
+      decompress 'x86-64 JDK' "${jdk_x64_url}" "${jdk_x64_url##*/}" "${jdk_x64_checksum}" "${cache}"
+    fi
+  else
+    # Use the just installed JDK.
+    java_home="${app}/Contents/Resources/${jdk_home}"
+  fi
+  java_home=$(abspath "${java_home}")
+
   gradle_dir="${cache}/${gradle_dist//-bin.zip}"
+  if [[ ! -d "${gradle_dir}" ]]; then
+    decompress Gradle "${gradle_url}" "${gradle_dist}" "${gradle_checksum}" "${cache}"
+  fi
 
   case ${arch} in
     x86-64)
@@ -150,21 +167,15 @@ build_natives() {
       ;;
   esac
 
-  if [[ ! -d "${gradle_dir}" ]]; then
-    decompress Gradle "${gradle_url}" "${gradle_dist}" "${gradle_checksum}" "${cache}"
-  fi
-
-  echo "Building ${arch} native executables"
-
   JAVA_HOME="${java_home}" PATH="${java_home}/bin:${PATH}" \
     "${gradle_dir}/bin/gradle" \
-    --project-dir "${ghidra_dir}/Ghidra" \
+    --project-dir "${app}/Contents/Resources/${ghidra_dir}/Ghidra" \
     --init-script "${PWD}/init.gradle" \
     "buildNatives_${target}"
 
   JAVA_HOME="${java_home}" PATH="${java_home}/bin:${PATH}" \
     "${gradle_dir}/bin/gradle" \
-    --project-dir "${ghidra_dir}/GPL" \
+    --project-dir "${app}/Contents/Resources/${ghidra_dir}/GPL" \
     --init-script "${PWD}/init.gradle" \
     "buildNatives_${target}"
 }
