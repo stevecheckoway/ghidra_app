@@ -1,5 +1,5 @@
 # ghidra_app
-![Build badge](https://github.com/stevecheckoway/ghidra_app/actions/workflows/ci.yml/badge.svg)
+[![Build badge](https://github.com/stevecheckoway/ghidra_app/actions/workflows/ci.yml/badge.svg)](https://github.com/stevecheckoway/ghidra_app/actions/workflows/ci.yml)
 
 Build a working Ghidra application for macOS with a bundled Java JDK.
 
