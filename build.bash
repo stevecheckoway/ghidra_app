@@ -20,8 +20,6 @@ ghidra_checksum='4e990af9b22be562769bb6ce5d4d609fbb45455a7a2f756167b8cdcdb75887f
 gradle_url='https://services.gradle.org/distributions/gradle-8.1.1-bin.zip'
 gradle_dist=${gradle_url##*/}
 gradle_checksum='e111cb9948407e26351227dabce49822fb88c37ee72f1d1582a69c68af2e702f'
-# Don't change this because gradle gets installed in $cache.
-gradle_dir="${cache}/${gradle_dist//-bin.zip}"
 
 # Print the usage.
 usage() {
@@ -43,59 +41,29 @@ create_cache() {
   [[ -d "${cache}" ]] || mkdir -p "${cache}"
 }
 
-# Download the JDK if we don't already have it.
-get_jdk() {
-  if [[ ! -f "${cache}/${jdk_dist}" ]]; then
-    echo "Downloading the JDK to '${cache}/${jdk_dist}'"
-    curl -L -o "${cache}/${jdk_dist}" "${jdk_url}"
-  else
-    echo "Using the cached JDK from '${cache}/${jdk_dist}'"
-  fi
-
-  # Verify the checksum.
-  echo "${jdk_checksum}  ${cache}/${jdk_dist}" | shasum --algorithm 256 --check --status
-}
-
-# Download Ghidra, if we don't already have it.
-get_ghidra() {
-  if [[ ! -f "${cache}/${ghidra_dist}" ]]; then
-    echo "Downloading Ghidra to '${cache}/${ghidra_dist}'"
-    curl -L -o "${cache}/${ghidra_dist}" "${ghidra_url}"
-  else
-    echo "Using cached Ghidra from '${cache}/${ghidra_dist}'"
-  fi
-
-  # Verify the checksum.
-  echo "${ghidra_checksum}  ${cache}/${ghidra_dist}" | shasum --algorithm 256 --check --status
-}
-
-get_gradle() {
-  # if gradle-8.1.1 (or whatever version) doesn't exist, download it (if
-  # necessary) and unzip it.
-  if [[ ! -d "${gradle_dir}" ]]; then
-    if [[ ! -f "${cache}/${gradle_dist}" ]]; then
-      echo "Downloading Gradle to '${cache}/${gradle_dist}'"
-      curl -L -o "${cache}/${gradle_dist}" "${gradle_url}"
-    else
-      echo "Using cached Gradle from '${cache}/${gradle_dist}'"
-    fi
-
-    # Verify the checksum.
-    echo "${gradle_checksum}  ${cache}/${gradle_dist}" | shasum --algorithm 256 --check --status
-
-    echo "Installing Gradle in '${gradle_dir}'"
-    decompress "${cache}/${gradle_dist}" "${cache}"
-  fi
-}
-
-# Decompress the archive in $1 into the directory in $2
+# decompress name URL file_name hash directory
+#
+# Download the file at URL, save in the cache, and decompress in the directory
 decompress() {
-  case $1 in
+  local name=$1 url=$2 file=$3 hash=$4 directory=$5
+
+  if [[ ! -f "${cache}/${file}" ]]; then
+    echo "Downloading ${name} to '${cache}/${file}'"
+    curl -L -o "${cache}/${file}" "${url}"
+  else
+    echo "Using cached ${name} from '${cache}/${file}'"
+  fi
+
+  # Verify the SHA-256 hash.
+  echo "${hash}  ${cache}/${file}" | shasum --algorithm 256 --check --status
+
+  echo "Decompressing ${name} in '${directory}'"
+  case ${file} in
     *.tar.gz)
-      tar zxf "$1" -C "$2"
+      tar zxf "${cache}/${file}" -C "${directory}"
       ;;
     *.zip)
-      unzip -qq "$1" -d "$2"
+      unzip -qq "${cache}/${file}" -d "${directory}"
       ;;
     *)
       echo "Unsupported file '$1'" >&2
@@ -149,8 +117,8 @@ GHIDRA_EOF
   cp "${script_dir}/ghidra.icns" "${app}/Contents/Resources"
 
   # Unzip the JDK and Ghidra into the Resources directory.
-  decompress "${cache}/${jdk_dist}" "${app}/Contents/Resources"
-  decompress "${cache}/${ghidra_dist}" "${app}/Contents/Resources"
+  decompress JDK "${jdk_url}" "${jdk_dist}" "${jdk_checksum}" "${app}/Contents/Resources"
+  decompress Ghidra "${ghidra_url}" "${ghidra_dist}" "${ghidra_checksum}" "${app}/Contents/Resources"
 }
 
 # https://stackoverflow.com/a/3572105
@@ -163,7 +131,7 @@ abspath() {
 }
 
 build_natives() {
-  local app=$1 arch=$2 ghidra_version ghidra_dir
+  local app=$1 arch=$2 ghidra_version ghidra_dir gradle_dir
 
   # XXX: Don't duplicate this logic.
   # Figure out the version number.
@@ -171,8 +139,9 @@ build_natives() {
   ghidra_version=${BASH_REMATCH[1]}
   ghidra_dir="${app}/Contents/Resources/ghidra_${ghidra_version}_${BASH_REMATCH[2]}"
   java_home=$(abspath "${app}/Contents/Resources/${jdk_home}")
+  gradle_dir="${cache}/${gradle_dist//-bin.zip}"
 
-  case $arch in
+  case ${arch} in
     x86-64)
       target=mac_x86_64
       ;;
@@ -180,6 +149,10 @@ build_natives() {
       target=mac_arm_64
       ;;
   esac
+
+  if [[ ! -d "${gradle_dir}" ]]; then
+    decompress Gradle "${gradle_url}" "${gradle_dist}" "${gradle_checksum}" "${cache}"
+  fi
 
   echo "Building ${arch} native executables"
 
@@ -260,11 +233,8 @@ main() {
   fi
 
   create_cache
-  get_jdk
-  get_ghidra
   build_wrapper "${app}" "${arch}"
   if [[ $build_native_executables = yes ]]; then
-    get_gradle
     build_natives "${app}" "${arch}"
   elif [[ $arch = x86-64 ]]; then
     echo "Using prebuilt native ${arch} binaries"
