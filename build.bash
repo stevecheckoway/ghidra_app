@@ -19,8 +19,9 @@ ghidra_checksum='4e990af9b22be562769bb6ce5d4d609fbb45455a7a2f756167b8cdcdb75887f
 
 gradle_url='https://services.gradle.org/distributions/gradle-8.1.1-bin.zip'
 gradle_dist=${gradle_url##*/}
-gradle_dir="${cache}/${gradle_dist//-bin.zip}"
 gradle_checksum='e111cb9948407e26351227dabce49822fb88c37ee72f1d1582a69c68af2e702f'
+# Don't change this because gradle gets installed in $cache.
+gradle_dir="${cache}/${gradle_dist//-bin.zip}"
 
 # Print the usage.
 usage() {
@@ -28,10 +29,12 @@ usage() {
 Usage: $0 [OPTION...]
 
 Options:
-  -a arch include the JDK for x86-64 or arm64 [default: detect]
+  -a arch build Ghidra.app for x86-64 or arm64 [default: detect]
+  -b      build native executables [default for arm64]
+  -B      use prebuilt native executables [default for x86-64]
   -f      force building Ghidra.app even if it already exists
   -h      show this help
-  -o app  use 'app' as the output name
+  -o app  use 'app' as the output name instead of Ghidra.app
 USAGE_EOF
 }
 
@@ -81,18 +84,18 @@ get_gradle() {
     echo "${gradle_checksum}  ${cache}/${gradle_dist}" | shasum --algorithm 256 --check --status
 
     echo "Installing Gradle in '${gradle_dir}'"
-    unzip -qq -d "${cache}" "${cache}/${gradle_dist}"
+    decompress "${cache}/${gradle_dist}" "${cache}"
   fi
 }
 
-# Decompress the archive in $1 to ${app}/Contents/Resources.
+# Decompress the archive in $1 into the directory in $2
 decompress() {
   case $1 in
     *.tar.gz)
-      tar zxf "$1" -C "${app}/Contents/Resources"
+      tar zxf "$1" -C "$2"
       ;;
     *.zip)
-      unzip -qq "$1" -d "${app}/Contents/Resources"
+      unzip -qq "$1" -d "$2"
       ;;
     *)
       echo "Unsupported file '$1'" >&2
@@ -146,8 +149,8 @@ GHIDRA_EOF
   cp "${script_dir}/ghidra.icns" "${app}/Contents/Resources"
 
   # Unzip the JDK and Ghidra into the Resources directory.
-  decompress "${cache}/${jdk_dist}"
-  decompress "${cache}/${ghidra_dist}"
+  decompress "${cache}/${jdk_dist}" "${app}/Contents/Resources"
+  decompress "${cache}/${ghidra_dist}" "${app}/Contents/Resources"
 }
 
 # https://stackoverflow.com/a/3572105
@@ -160,42 +163,53 @@ abspath() {
 }
 
 build_natives() {
-  local app=$1 ghidra_version ghidra_dir gradle_bin
+  local app=$1 arch=$2 ghidra_version ghidra_dir
 
   # XXX: Don't duplicate this logic.
   # Figure out the version number.
   [[ "${ghidra_dist}" =~ ^ghidra_([0-9.]+)_([^_]+)_ ]] || exit 1
   ghidra_version=${BASH_REMATCH[1]}
-  ghidra_dir="ghidra_${ghidra_version}_${BASH_REMATCH[2]}"
-
+  ghidra_dir="${app}/Contents/Resources/ghidra_${ghidra_version}_${BASH_REMATCH[2]}"
   java_home=$(abspath "${app}/Contents/Resources/${jdk_home}")
-  gradle_bin=$(abspath "${gradle_dir}/bin")
-  JAVA_HOME="${java_home}" PATH="${gradle_bin}:${java_home}/bin:${PATH}" "${app}/Contents/Resources/${ghidra_dir}/support/buildNatives"
-}
 
-normalize_arch() {
-  case $1 in
-    x86_64|x86-64)
-      echo "x86-64"
+  case $arch in
+    x86-64)
+      target=mac_x86_64
       ;;
-    arm64|aarch64)
-      echo "arm64"
+    arm64)
+      target=mac_arm_64
       ;;
-    *)
-      echo "$0: Unsupported architecture '${arch}'" >&2
-      exit 1
   esac
-}
 
+  echo "Building ${arch} native executables"
+
+  JAVA_HOME="${java_home}" PATH="${java_home}/bin:${PATH}" \
+    "${gradle_dir}/bin/gradle" \
+    --project-dir "${ghidra_dir}/Ghidra" \
+    --init-script "${PWD}/init.gradle" \
+    "buildNatives_${target}"
+
+  JAVA_HOME="${java_home}" PATH="${java_home}/bin:${PATH}" \
+    "${gradle_dir}/bin/gradle" \
+    --project-dir "${ghidra_dir}/GPL" \
+    --init-script "${PWD}/init.gradle" \
+    "buildNatives_${target}"
+}
 
 main() {
-  local force app native_arch arch
-  native_arch=$(normalize_arch "$(uname -m)")
-  arch=${native_arch}
-  while getopts "a:fho:" arg; do
+  local force app arch build_native_executables
+  arch=$(uname -m)
+
+  while getopts "a:bBfho:" arg; do
     case ${arg} in
       a)
-        arch=$(normalize_arch "${OPTARG}")
+        arch="${OPTARG}"
+        ;;
+      b)
+        build_native_executables=yes
+        ;;
+      B)
+        build_native_executables=no
         ;;
       f)
         force=yes
@@ -212,16 +226,21 @@ main() {
         exit 1
     esac
   done
+
   case ${arch} in
-    x86-64)
+    x86-64|x86_64)
+      arch=x86-64
       jdk_url=${jdk_x64_url}
       jdk_checksum=${jdk_x64_checksum}
       jdk_home=${jdk_x64_home}
+      build_native_executables=${build_native_executables:-no}
       ;;
-    arm64)
+    arm64|aarch64)
+      arch=arm64
       jdk_url=${jdk_arm_url}
       jdk_checksum=${jdk_arm_checksum}
       jdk_home=${jdk_arm_home}
+      build_native_executables=${build_native_executables:-yes}
       ;;
     *)
       echo "$0: Unsupported architecture '${arch}'" >&2
@@ -244,16 +263,15 @@ main() {
   get_jdk
   get_ghidra
   build_wrapper "${app}" "${arch}"
-  if [[ $arch = "$native_arch" ]]; then
-    echo "Building ${arch} native binaries"
+  if [[ $build_native_executables = yes ]]; then
     get_gradle
-    build_natives "${app}"
+    build_natives "${app}" "${arch}"
   elif [[ $arch = x86-64 ]]; then
-    echo "Using prebuilt native ${arch} binaries; "
+    echo "Using prebuilt native ${arch} binaries"
   else
-    echo "WARNING: native ${arch} binaries have not been built"
-    echo "         x86-64 binaries will be used via emulation"
-    echo "         This is slower."
+    echo "WARNING: Native ${arch} binaries have not been built"
+    echo "WARNING: The prebuilt x86-64 binaries will be used via emulation"
+    echo "WARNING: This is slower"
   fi
 }
 
