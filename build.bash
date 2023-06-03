@@ -53,16 +53,16 @@ decompress() {
   local name=$1 url=$2 file=$3 hash=$4 directory=$5
 
   if [[ ! -f "${cache}/${file}" ]]; then
-    echo "Downloading ${name} to '${cache}/${file}'"
+    echo " ➤ Downloading ${name} to '${cache}/${file}'"
     curl -L -o "${cache}/${file}" "${url}"
   else
-    echo "Using cached ${name} from '${cache}/${file}'"
+    echo " ➤ Using cached ${name} from '${cache}/${file}'"
   fi
 
   # Verify the SHA-256 hash.
   echo "${hash}  ${cache}/${file}" | shasum --algorithm 256 --check --status
 
-  echo "Decompressing ${name} in '${directory}'"
+  echo " ➤ Decompressing ${name} in '${directory}'"
   case ${file} in
     *.tar.gz)
       tar zxf "${cache}/${file}" -C "${directory}"
@@ -147,8 +147,9 @@ build_natives() {
     if [[ ! -d "${java_home}" ]]; then
       decompress 'x86-64 JDK' "${jdk_x64_url}" "${jdk_x64_url##*/}" "${jdk_x64_checksum}" "${cache}"
     fi
+    echo " ➤ Using the x86-64 JDK to build for arm64"
   else
-    # Use the just installed JDK.
+    echo " ➤ Using the JDK just installed in ${app}"
     java_home="${app}/Contents/Resources/${jdk_home}"
   fi
   java_home=$(abspath "${java_home}")
