@@ -13,9 +13,9 @@ jdk_arm_url='https://github.com/adoptium/temurin17-binaries/releases/download/jd
 jdk_arm_checksum='1d6aeb55b47341e8ec33cc1644d58b88dfdcce17aa003a858baa7460550e6ff9'
 jdk_arm_home='jdk-17.0.7+7/Contents/Home'
 
-ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.4_build/ghidra_10.4_PUBLIC_20230928.zip'
+ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_11.0_build/ghidra_11.0_PUBLIC_20231222.zip'
 ghidra_dist=${ghidra_url##*/}
-ghidra_checksum='6911d674798f145f8ea723fdd3eb67a8fae8c7be92e117bca081e6ef66acac19'
+ghidra_checksum='f1f240f91cf6b1dffc9a4148384ee3c6b269a8ae27c6f981577973e00043ad94'
 
 gradle_url='https://services.gradle.org/distributions/gradle-8.1.1-bin.zip'
 gradle_dist=${gradle_url##*/}
