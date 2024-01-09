@@ -30,8 +30,8 @@ $ ./build.bash
 
 At this point, you should have `Ghidra.app` in the `ghidra_app` directory.
 
-The script will download Ghidra (currently version 10.3 which is the most
-recent at time of writing, 2023-06-02) and OpenJDK 17. Together, these take
+The script will download Ghidra (currently version 11.0 which is the most
+recent at time of writing, 2024-01-09) and OpenJDK 17. Together, these take
 more than 450 MB.
 
 The downloads will be cached for future use in the `cache` directory. You may
