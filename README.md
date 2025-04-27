@@ -49,6 +49,7 @@ Options:
   -B      use prebuilt native executables [default for x86-64]
   -f      force building Ghidra.app even if it already exists
   -h      show this help
+  -n      use the latest Ghidra version
   -o app  use 'app' as the output name instead of Ghidra.app
 
 ```

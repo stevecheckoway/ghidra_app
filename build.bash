@@ -5,17 +5,17 @@ set -e
 script_dir=$(dirname "$0")
 cache=${GHIDRA_APP_BUILD_CACHE:-"${script_dir}/cache"}
 
-jdk_x64_url='https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jdk_x64_mac_hotspot_17.0.7_7.tar.gz'
-jdk_x64_checksum='50d0e9840113c93916418068ba6c845f1a72ed0dab80a8a1f7977b0e658b65fb'
-jdk_x64_home='jdk-17.0.7+7/Contents/Home'
+jdk_x64_url='https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.4%2B7/OpenJDK21U-jdk_x64_mac_hotspot_21.0.4_7.tar.gz'
+jdk_x64_checksum='e368e5de7111aa88e6bbabeff6f4c040772b57fb279cc4e197b51654085bbc18'
+jdk_x64_home='jdk-21.0.4+7/Contents/Home'
 
-jdk_arm_url='https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jdk_aarch64_mac_hotspot_17.0.7_7.tar.gz'
-jdk_arm_checksum='1d6aeb55b47341e8ec33cc1644d58b88dfdcce17aa003a858baa7460550e6ff9'
-jdk_arm_home='jdk-17.0.7+7/Contents/Home'
+jdk_arm_url='https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.4%2B7/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.4_7.tar.gz'
+jdk_arm_checksum='dcf69a21601d9b1b25454bbad4f0f32784bb42cdbe4063492e15a851b74cb61e'
+jdk_arm_home='jdk-21.0.4+7/Contents/Home'
 
-ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_11.0.3_build/ghidra_11.0.3_PUBLIC_20240410.zip'
+ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_11.2_build/ghidra_11.2_PUBLIC_20240926.zip'
 ghidra_dist=${ghidra_url##*/}
-ghidra_checksum='2462a2d0ab11e30f9e907cd3b4aa6b48dd2642f325617e3d922c28e752be6761'
+ghidra_checksum='a98fe01038fe8791c54b121ede545ea799d26358794d7c2ac09fa3f5054f3cdc'
 
 gradle_url='https://services.gradle.org/distributions/gradle-8.1.1-bin.zip'
 gradle_dist=${gradle_url##*/}
@@ -37,6 +37,7 @@ Options:
   -B      use prebuilt native executables [default for x86-64]
   -f      force building Ghidra.app even if it already exists
   -h      show this help
+  -n      use the latest Ghidra version
   -o app  use 'app' as the output name instead of Ghidra.app
 USAGE_EOF
 }
@@ -44,6 +45,52 @@ USAGE_EOF
 # Create the cache directory, if it doesn't already exist.
 create_cache() {
   [[ -d "${cache}" ]] || mkdir -p "${cache}"
+}
+
+clear_old_ghidra_versions() {
+  # List all Ghidra files in the cache directory
+  files=("${cache}"/ghidra_*.zip)
+
+  # Function to extract version numbers from filenames
+  extract_version() {
+      echo "$1" | awk -F '[_.]' '{print $2"."$3"."$4}'
+  }
+
+  # Find the latest version
+  latest_version="0.0.0"
+  latest_file=""
+
+  for file in "${files[@]}"; do
+      version=$(extract_version "$file")
+      if [ "$(printf '%s\n' "$latest_version" "$version" | sort -V | tail -n 1)" = "$version" ]; then
+          latest_version="$version"
+          latest_file="$file"
+      fi
+  done
+
+  # Delete all files except the latest version
+  for file in "${files[@]}"; do
+      if [ "$file" != "$latest_file" ]; then
+          rm "$file"
+          echo "Deleted $file"
+      fi
+  done
+
+  echo "Kept latest version: $latest_file"
+}
+
+fetch_latest_ghidra() {
+  # Fetch the latest release JSON using curl
+  GHIDRA_RELEASES_URL="https://api.github.com/repos/NationalSecurityAgency/ghidra/releases/latest"
+  release_json=$(curl -s $GHIDRA_RELEASES_URL)
+  # Extract the browser download URL using awk and sed
+  ghidra_url=$(echo "$release_json" | awk -F '"' '/"browser_download_url":/ {print $4}' | head -n 1)
+  ghidra_dist=${ghidra_url##*/}
+  # Extract the SHA-256 checksum from the release body using sed
+  ghidra_checksum=$(echo "$release_json" | sed -n 's/.*SHA-256: `\([0-9a-fA-F]\{64\}\)`.*/\1/p')
+  [[ "${ghidra_dist}" =~ ^ghidra_([0-9.]+)_([^_]+)_ ]] || exit 1
+  ghidra_version=${BASH_REMATCH[1]}
+  ghidra_dir="ghidra_${ghidra_version}_${BASH_REMATCH[2]}"
 }
 
 # decompress name URL file_name hash directory
@@ -81,7 +128,6 @@ build_wrapper() {
 
   echo "Building the Ghidra wrapper '${app}' for ${arch}"
   mkdir -p "${app}/Contents/MacOS" "${app}/Contents/Resources"
-
   # Create the Info.plist.
   cat >"${app}/Contents/Info.plist" <<INFO_EOF
 {
@@ -167,6 +213,8 @@ build_natives() {
       target=mac_arm_64
       ;;
   esac
+# This file doesn't exist anymore  
+cp  "${PWD}/settings.gradle" "${app}/Contents/Resources/${ghidra_dir}/Ghidra"
 
   JAVA_HOME="${java_home}" PATH="${java_home}/bin:${PATH}" \
     "${gradle_dir}/bin/gradle" \
@@ -182,10 +230,10 @@ build_natives() {
 }
 
 main() {
-  local force app arch build_native_executables
+  local force app arch build_native_executables latest
   arch=$(uname -m)
 
-  while getopts "a:bBfho:" arg; do
+  while getopts "a:bBfhno:" arg; do
     case ${arg} in
       a)
         arch="${OPTARG}"
@@ -202,6 +250,10 @@ main() {
       h)
         usage
         exit 0
+        ;;
+      n)
+        latest=yes
+        echo "Using latest version"
         ;;
       o)
         app=${OPTARG}
@@ -245,6 +297,13 @@ main() {
   fi
 
   create_cache
+  clear_old_ghidra_versions
+
+  if [ "$latest" = "yes" ]; then
+    echo "Getting latest Ghidra release"
+    fetch_latest_ghidra
+  fi
+
   build_wrapper "${app}" "${arch}"
   if [[ $build_native_executables = yes ]]; then
     build_natives "${app}" "${arch}"
