@@ -5,21 +5,21 @@ set -e
 script_dir=$(dirname "$0")
 cache=${GHIDRA_APP_BUILD_CACHE:-"${script_dir}/cache"}
 
-jdk_x64_url='https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jdk_x64_mac_hotspot_17.0.7_7.tar.gz'
-jdk_x64_checksum='50d0e9840113c93916418068ba6c845f1a72ed0dab80a8a1f7977b0e658b65fb'
-jdk_x64_home='jdk-17.0.7+7/Contents/Home'
+jdk_x64_url='https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-debugimage_x64_mac_hotspot_21.0.11_10.tar.gz'
+jdk_x64_checksum='1942018fb70045ab6706c601c769bf2b807d20938d3cc4d9ca94a3b506f378b5'
+jdk_x64_home='jdk-21.0.11+10/Contents/Home'
 
-jdk_arm_url='https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jdk_aarch64_mac_hotspot_17.0.7_7.tar.gz'
-jdk_arm_checksum='1d6aeb55b47341e8ec33cc1644d58b88dfdcce17aa003a858baa7460550e6ff9'
-jdk_arm_home='jdk-17.0.7+7/Contents/Home'
+jdk_arm_url='https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.11_10.tar.gz'
+jdk_arm_checksum='6ebcf221c9b41507b14c098e93c6ead6440b8d9bd154f8ec666c4c73abbdb201'
+jdk_arm_home='jdk-21.0.11+10/Contents/Home'
 
-ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_11.0.3_build/ghidra_11.0.3_PUBLIC_20240410.zip'
+ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.2_build/ghidra_12.1.2_PUBLIC_20260605.zip'
 ghidra_dist=${ghidra_url##*/}
-ghidra_checksum='2462a2d0ab11e30f9e907cd3b4aa6b48dd2642f325617e3d922c28e752be6761'
+ghidra_checksum='b62e81a0390618466c019c60d8c2f796ced2509c4c1aea4a37644a77272cf99d'
 
-gradle_url='https://services.gradle.org/distributions/gradle-8.1.1-bin.zip'
+gradle_url='https://services.gradle.org/distributions/gradle-9.7.0-milestone-2-bin.zip'
 gradle_dist=${gradle_url##*/}
-gradle_checksum='e111cb9948407e26351227dabce49822fb88c37ee72f1d1582a69c68af2e702f'
+gradle_checksum='a929bbcb295cb360d04685adaf3a6af16bf1d201fc4dbc91c714c7e12d9b1abe'
 
 # Figure out Ghidra's version number.
 [[ "${ghidra_dist}" =~ ^ghidra_([0-9.]+)_([^_]+)_ ]] || exit 1
