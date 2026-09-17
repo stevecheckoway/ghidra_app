@@ -5,21 +5,21 @@ set -e
 script_dir=$(dirname "$0")
 cache=${GHIDRA_APP_BUILD_CACHE:-"${script_dir}/cache"}
 
-jdk_x64_url='https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jdk_x64_mac_hotspot_17.0.7_7.tar.gz'
-jdk_x64_checksum='50d0e9840113c93916418068ba6c845f1a72ed0dab80a8a1f7977b0e658b65fb'
-jdk_x64_home='jdk-17.0.7+7/Contents/Home'
+jdk_x64_url='https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_x64_mac_hotspot_21.0.11_10.tar.gz'
+jdk_x64_checksum='34180eb03e6d207c388cce3da668f6cc7cd7508c185c24782fadac2c9c0e66f9'
+jdk_x64_home='jdk-21.0.11+10/Contents/Home'
 
-jdk_arm_url='https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.7%2B7/OpenJDK17U-jdk_aarch64_mac_hotspot_17.0.7_7.tar.gz'
-jdk_arm_checksum='1d6aeb55b47341e8ec33cc1644d58b88dfdcce17aa003a858baa7460550e6ff9'
-jdk_arm_home='jdk-17.0.7+7/Contents/Home'
+jdk_arm_url='https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.11_10.tar.gz'
+jdk_arm_checksum='6ebcf221c9b41507b14c098e93c6ead6440b8d9bd154f8ec666c4c73abbdb201'
+jdk_arm_home='jdk-21.0.11+10/Contents/Home'
 
-ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_11.0.3_build/ghidra_11.0.3_PUBLIC_20240410.zip'
+ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.3_build/ghidra_12.1.3_PUBLIC_20260817.zip'
 ghidra_dist=${ghidra_url##*/}
-ghidra_checksum='2462a2d0ab11e30f9e907cd3b4aa6b48dd2642f325617e3d922c28e752be6761'
+ghidra_checksum='93a5d11a9ad510622acaaf908c556a7b9b764d338e78a7567f3689bf5081fd54'
 
-gradle_url='https://services.gradle.org/distributions/gradle-8.1.1-bin.zip'
+gradle_url='https://services.gradle.org/distributions/gradle-9.7.1-bin.zip'
 gradle_dist=${gradle_url##*/}
-gradle_checksum='e111cb9948407e26351227dabce49822fb88c37ee72f1d1582a69c68af2e702f'
+gradle_checksum='acd53f1edaf02f1a8ff99879f8a34b302661a057d9b063ae9e35b552f804d20a'
 
 # Figure out Ghidra's version number.
 [[ "${ghidra_dist}" =~ ^ghidra_([0-9.]+)_([^_]+)_ ]] || exit 1
@@ -60,7 +60,10 @@ decompress() {
   fi
 
   # Verify the SHA-256 hash.
-  echo "${hash}  ${cache}/${file}" | shasum --algorithm 256 --check --status
+  if ! echo "${hash}  ${cache}/${file}" | shasum --algorithm 256 --check --status; then
+    echo "SHA-256 checksum failed"
+    exit 1
+  fi
 
   echo " ➤ Decompressing ${name} in '${directory}'"
   case ${file} in
@@ -155,7 +158,7 @@ build_natives() {
   java_home=$(abspath "${java_home}")
 
   gradle_dir="${cache}/${gradle_dist//-bin.zip}"
-  if [[ ! -d "${gradle_dir}" ]]; then
+  if [[ ! -f "${gradle_dir}/bin/gradle" ]]; then
     decompress Gradle "${gradle_url}" "${gradle_dist}" "${gradle_checksum}" "${cache}"
   fi
 
@@ -170,14 +173,12 @@ build_natives() {
 
   JAVA_HOME="${java_home}" PATH="${java_home}/bin:${PATH}" \
     "${gradle_dir}/bin/gradle" \
-    --project-dir "${app}/Contents/Resources/${ghidra_dir}/Ghidra" \
-    --init-script "${PWD}/init.gradle" \
+    --project-dir "${app}/Contents/Resources/${ghidra_dir}/support/gradle" \
     "buildNatives_${target}"
 
   JAVA_HOME="${java_home}" PATH="${java_home}/bin:${PATH}" \
     "${gradle_dir}/bin/gradle" \
     --project-dir "${app}/Contents/Resources/${ghidra_dir}/GPL" \
-    --init-script "${PWD}/init.gradle" \
     "buildNatives_${target}"
 }
 
