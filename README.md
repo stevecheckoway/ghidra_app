@@ -61,6 +61,4 @@ Script](https://gist.github.com/yifanlu/e9965cdb148b550335e57899f790cad2). The
 Ghidra icon file was taken directly from Lu's GitHub Gist.
 
 The approach for cross compiling the native executables came from [Robin
-Lambertz](https://github.com/roblabla/ghidra-ci). The `init.gradle` file is a
-modified version of their
-[`mac_arm_64.init.gradle`](https://github.com/roblabla/ghidra-ci/blob/7819b5feffdc27214cc133fdab64bb260c22a285/mac_arm_64.init.gradle) file.
+Lambertz](https://github.com/roblabla/ghidra-ci).
