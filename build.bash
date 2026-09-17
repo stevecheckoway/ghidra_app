@@ -5,13 +5,13 @@ set -e
 script_dir=$(dirname "$0")
 cache=${GHIDRA_APP_BUILD_CACHE:-"${script_dir}/cache"}
 
-jdk_x64_url='https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_x64_mac_hotspot_21.0.11_10.tar.gz'
-jdk_x64_checksum='34180eb03e6d207c388cce3da668f6cc7cd7508c185c24782fadac2c9c0e66f9'
-jdk_x64_home='jdk-21.0.11+10/Contents/Home'
+jdk_x64_url='https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4.1%2B1/OpenJDK25U-jdk_x64_mac_hotspot_25.0.4.1_1.tar.gz'
+jdk_x64_checksum='2a04409351992e365b62eb765ae79de607fbd65c7c2db564bc32e460b51b1edf'
+jdk_x64_home='jdk-25.0.4.1+1/Contents/Home'
 
-jdk_arm_url='https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.11_10.tar.gz'
-jdk_arm_checksum='6ebcf221c9b41507b14c098e93c6ead6440b8d9bd154f8ec666c4c73abbdb201'
-jdk_arm_home='jdk-21.0.11+10/Contents/Home'
+jdk_arm_url='https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4.1%2B1/OpenJDK25U-jdk_aarch64_mac_hotspot_25.0.4.1_1.tar.gz'
+jdk_arm_checksum='61979887f7506a24a57439ff99adb8b3a7fc89977d9cfe3b8984f58a981b7b9d'
+jdk_arm_home='jdk-25.0.4.1+1/Contents/Home'
 
 ghidra_url='https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.3_build/ghidra_12.1.3_PUBLIC_20260817.zip'
 ghidra_dist=${ghidra_url##*/}
