@@ -6,7 +6,7 @@ script_dir=$(dirname "$0")
 cache=${GHIDRA_APP_BUILD_CACHE:-"${script_dir}/cache"}
 
 jdk_x64_url='https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4.1%2B1/OpenJDK25U-jdk_x64_mac_hotspot_25.0.4.1_1.tar.gz'
-jdk_x64_checksum='2a04409351992e365b62eb765ae79de607fbd65c7c2db564bc32e460b51b1edf'
+jdk_x64_checksum='e6229d9504f7922053ab31821b9e6bee8761daf7b026a3476d1a027563009880'
 jdk_x64_home='jdk-25.0.4.1+1/Contents/Home'
 
 jdk_arm_url='https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4.1%2B1/OpenJDK25U-jdk_aarch64_mac_hotspot_25.0.4.1_1.tar.gz'
